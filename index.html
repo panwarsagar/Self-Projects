@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<meta name="theme-color" content="#000000">
+	
+	<link rel="manifest" href="%PUBLIC_URL%/manifest.json">
+  <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+           
+                
+            html,body 
+            {
+                padding:0;
+                margin:0;
+                height:100%;
+                min-height:100%;
+            }
+            .main_left{background-color:#E8E8E8; width:24%; height:97%; float:left; border:solid; margin: 0.5% 0.5% 0.5% 1.2%; border-color:white;}
+            .main_right{background-color:#E8E8E8; width:72%; height:97%; float:left;border:solid;  margin: 0.5% 0.5% 0.5% 0.5%; border-color:white;}
+            .sub_main_left_top {background-color:#E8E8E8; width:98%; height:62%; float:left; margin: 0.0% 0.5% 0.5% 1.2%;}
+            .sub_main_right_top {background-color:#E8E8E8; width:98%; height:74%; float:left;border:solid;  margin: 0.5% 0.5% 0.5% 0.5%; border-color:black;}
+            .sub_main_left_bottom {background-color:#E8E8E8; width:97%; height:37%; float:left;border:solid; margin: 0.0% 0.5% 0.5% 1.2%;}    
+            .sub_main_right_bottom {background-color:#E8E8E8; width:98%; height:20%; float:left;border:solid; margin: 0.5% 0.5% 0.5% 0.5%; border-color:black;}
+
+            .table_left_top{
+                height:100%;
+                width:100%;
+                /*border:solid;
+                border-color:black;*/
+            }
+            .table_left_top tr td {
+                /*border: solid;
+                border-color:black;*/
+                align-content: center;
+            }
+            .th_table_left_top{
+                height:5%;
+                width:100%;
+                /*border:solid;
+                border-color:black;*/
+                align-content: center;
+            }
+            .table_left_top tr:nth-child(3){
+                
+                width:100%;
+                height:10%;
+            }
+            #div_live_video_feed{
+                background-color:#E8E8E8; width:100%; height:97%; float:left; position: relative;
+            }
+            #detailsBtn{
+                height:60%;
+                width:80%;
+                border-radius: 5%;
+            }
+            #alertBtn{
+                height:60%;
+                width:80%;
+                border-radius: 5%;
+            }
+
+        
+        </style>
+	<!--
+      Notice the use of %PUBLIC_URL% in the tags above.
+      It will be replaced with the URL of the `public` folder during the build.
+      Only files inside the `public` folder can be referenced from the HTML.
+
+      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+      work correctly both with client-side routing and a non-root public URL.
+      Learn how to configure a non-root public URL by running `npm run build`.
+    -->
+    <!-- Google Firebase -->
+<script src="https://www.gstatic.com/firebasejs/6.2.4/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/6.2.4/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/6.2.4/firebase-auth.js"></script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDxZ1_omdR3TTodFg5UE3ix_ZFbBzmr_ac&callback=initMap">
+    </script>
+
+  <script src="capture-video-frame.js"></script>
+  <script type="text/javascript" src="static_map.js"></script>
+	<title>React App</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script type="text/javascript">
+var threat_object = '';
+var objectImageFilename = ''
+var demoLatitude = 39.132360;
+var demoLongitude = -84.514979;
+var myLatitude = ''
+var myLongitude = ''
+var safeBuildings = [];
+var cautionedBuildings = [];
+var dangerBuildings = [];
+var objectImageBlob = '';
+var preLatitude = '';
+var preLongitude = '';
+var preNearestBuilding = '';
+var preName = '';
+function my_code(){
+    function success(position) {
+      myLatitude  = position.coords.latitude;
+      myLongitude = position.coords.longitude;
+    }
+  
+    function error() {
+      alert('Unable to retrieve your location');
+    }
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser');
+    } else {
+        
+        navigator.geolocation.getCurrentPosition(success, error);
+    }
+    if(Math.abs(parseFloat(demoLatitude - myLatitude)) <= 0.009 && Math.abs(parseFloat(demoLongitude - myLongitude)) <= 0.009 ){
+        myLatitude = demoLatitude;
+        myLongitude = demoLongitude;
+    }
+}
+
+window.onload=my_code();
+
+function prepareMap(){
+
+    //Initialize map with the initial object position
+    if(myLatitude === '' || myLongitude === ''){
+        my_code();
+        //alert('No coordinates detected');
+    }else{
+        var map = new google.maps.Map(document.getElementById('map'), {
+        //center: new google.maps.LatLng(position.coords.latitude, position.coords.longitude),
+        center: new google.maps.LatLng(myLatitude, myLongitude),
+        zoom: 16
+        });
+        var marker = new google.maps.Marker({
+        position: new google.maps.LatLng(myLatitude, myLongitude),
+        map: map,
+        title: 'Hello World!'
+        });
+        
+        //fetchFirebaseBuildingsData();
+        //calculateDistance(objLat, objLong, targetLat, targetLong);
+    }
+
+    //Now put the markers and draw the circles
+    var cityCircle = new google.maps.Circle({
+            strokeColor: '#FF0000',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#FF0000',
+            fillOpacity: 0.35,
+            map: map,
+            center: {lat: demoLatitude, lng: demoLongitude},
+            radius: 200
+    });
+
+    var cityCircle = new google.maps.Circle({
+            strokeColor: '#EFFD5F',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#FFFF33',
+            fillOpacity: 0.35,
+            map: map,
+            center: {lat: demoLatitude, lng: demoLongitude},
+            radius: 400
+    });
+
+    var cityCircle = new google.maps.Circle({
+            strokeColor: '#8BC8AA',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#8BC8AA',
+            fillOpacity: 0.35,
+            map: map,
+            center: {lat: demoLatitude, lng: demoLongitude},
+            radius: 800
+    });
+
+    //setBuildingsMarkers();
+    var buildingsarray = fetchFirebaseBuildingsData(map);
+    console.log("The length of the returned array is: "+buildingsarray.length);
+    console.log("The first latitude is: "+ buildingsarray[0].lat);
+    for(i=0; i<safeBuildings.length; i++){
+        console.log("SafeBuilding "+i);
+        console.log(safeBuildings[i][0]);
+        console.log(safeBuildings[i][1]);
+    }
+
+    uploadObjectImage();
+}
+
+function uploadObjectImage(){
+    var filename = objectImageFilename;
+
+    var storageRef = firebase.storage().ref('/objectImages/' + filename);
+    var uploadTask = storageRef.put(objectImageBlob);
+    uploadTask.on('state_changed', function(snapshot){
+
+    }, function(error){
+        console.log("Error, cannot upload the file");
+    }, function(){
+        var downloadURL = uploadTask.snapshot.downloadURL;
+        console.log(downloadURL);
+    });
+
+}
+
+function calculateDistance(objLat, objLong, targetLat, targetLong){
+        var R = 6371e3; // metres
+        var lat1Rad = toRadians(objLat);
+        var lat2Rad = toRadians(targetLat);
+        var diffLat= toRadians(targetLat-objLat);
+        var diffLong = toRadians(targetLong-objLong);
+
+        var a = Math.sin(diffLat/2) * Math.sin(diffLat/2) +
+        Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+        Math.sin(diffLong/2) * Math.sin(diffLong/2);
+        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        var d = R * c;
+
+        return d;
+}
+
+function toRadians(degrees) {
+    return (degrees * Math.PI) / 180;
+}
+function setObjectDetectionVariable(object_detected){
+      threat_object = object_detected;
+}
+
+
+function takeSnapshot(){
+    var frame = captureVideoFrame('myVideo', 'png');
+    var img = document.getElementById('my-screenshot');
+    img.setAttribute('src', frame.dataUri);
+    var formData = new FormData();
+    formData.append('file', frame.blob, 'my-screenshot.' + frame.format);
+    preLatitude= document.getElementById("objLatitude");
+    preLatitude.innerHTML = myLatitude;
+    preLongitude = document.getElementById("objLongitude");
+    preLongitude.innerHTML = myLongitude;
+    preNearestBuilding = document.getElementById("objNearestLocation");
+    preNearestBuilding.innerHTML = "CRC Classrooms";
+    preName = document.getElementById("objName");
+    preName.innerHTML = "Calculator"; 
+}
+
+  
+// Function to convert DataURI of an image to the blob type
+  function dataURItoBlob(dataURI) {
+    // convert base64/URLEncoded data component to raw binary data held in a string
+    var byteString;
+    if (dataURI.split(',')[0].indexOf('base64') >= 0)
+        byteString = atob(dataURI.split(',')[1]);
+    else
+        byteString = unescape(dataURI.split(',')[1]);
+
+    // separate out the mime component
+    var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+    // write the bytes of the string to a typed array
+    var ia = new Uint8Array(byteString.length);
+    for (var i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+    }
+
+    return new Blob([ia], {type:mimeString});
+}
+
+
+/*************** This is for the admin sign-in modal ********************/
+var firebaseConfig = {
+    apiKey: "AIzaSyAS_dNoRge9mMO-Rb-TcR1azPHqjvqvEPI",
+    authDomain: "object-detection-project-7fa84.firebaseapp.com",
+    databaseURL: "https://object-detection-project-7fa84.firebaseio.com",
+    projectId: "object-detection-project-7fa84",
+    storageBucket: "object-detection-project-7fa84.appspot.com",
+    messagingSenderId: "729563806367",
+    appId: "1:729563806367:web:61601a47cfb0a050"
+};
+
+
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+var db = firebase.firestore();
+
+function fetchFirebaseBuildingsData(map){
+    
+    var allBuilduings = []
+    //var safePlaces = {}
+    //var cautionedPlaces = {}
+    //var dangerPlaces = {}
+    var i = 0;
+    db.collection('Buildings').get().then((snapshot) => {
+        /*snapshot.docs.array.forEach(element => {
+            
+        });*/
+        snapshot.docs.forEach(doc => {
+            //console.log(doc.data());
+            i += 1;
+            var description = doc.data().description;
+            var lat = doc.data().lat;
+            var long = doc.data().long;
+            var name = doc.data().name;
+            var description = doc.data().description;
+
+            if (safeBuildings.length == 2 && cautionedBuildings.length == 2 && dangerBuildings.length == 2){
+                return;
+            }
+            if(calculateDistance(demoLatitude, demoLongitude, lat, long) < 200 && (dangerBuildings.length < 2)){
+                
+                
+                
+                //console.log("Inside the dangerBuildings loop");
+                var dangerPlaces = {}
+                dangerPlaces["lat"] = lat;
+                dangerPlaces["long"] = long;
+                dangerPlaces["name"] = name;
+                dangerPlaces["description"] = description;
+                //allBuilduings[i] = danger
+                dangerBuildings.push(dangerPlaces);
+                //dangerBuildings.push([lat, long]);
+                console.log("Lat: "+dangerBuildings[0].lat);
+                console.log("name: "+dangerBuildings[0].name);
+            }else if(calculateDistance(demoLatitude, demoLongitude, lat, long) <= 400 && calculateDistance(demoLatitude, demoLongitude, lat, long) > 200 && (cautionedBuildings.length < 2)){
+                var cautionedPlaces = {}
+                cautionedPlaces["lat"] = lat;
+                cautionedPlaces["long"] = long;
+                cautionedPlaces["name"] = name;
+                cautionedPlaces["description"] = description;
+                cautionedBuildings.push(cautionedPlaces);
+
+                console.log("Inside the cautionedBuildings loop");
+                console.log("Inside the dangerBuildings loop");
+            }else if(calculateDistance(demoLatitude, demoLongitude, lat, long) <= 800 && calculateDistance(demoLatitude, demoLongitude, lat, long) > 400 && (safeBuildings.length < 2)){
+                var safePlaces = {}
+                safePlaces["lat"] = lat;
+                safePlaces["long"] = long;
+                safePlaces["name"] = name;
+                safePlaces["description"] = description;
+                safeBuildings.push(safePlaces);
+                //safeBuildings.push([lat, long]);
+                console.log("Inside the safeBuildings loop");
+                console.log("Inside the dangerBuildings loop");
+            }
+        })
+
+        
+        console.log("safebuildings size: "+safeBuildings.length);
+        console.log("safebuildings size: "+cautionedBuildings.length);
+        console.log("safebuildings size: "+dangerBuildings.length);
+
+        //return 
+        console.log("Map marker: "+map);
+        console.log("dangerous building1  lat: "+ dangerBuildings[0].lat);
+        console.log("dangerous building2  lat: "+ dangerBuildings[1].lat);
+
+// Danger Buildings markers
+        var dangermarker1 = new google.maps.Marker({
+        position: new google.maps.LatLng(dangerBuildings[0].lat, dangerBuildings[0].long),
+        map: map,
+        title: dangerBuildings[0].name,
+        //icon: 'download.png'
+        });
+        var dangermarker2 = new google.maps.Marker({
+        position: new google.maps.LatLng(dangerBuildings[1].lat, dangerBuildings[1].long),
+        map: map,
+        title: dangerBuildings[1].name,
+        //icon: 'download.png'
+        });
+        var infowindowdanger1 = new google.maps.InfoWindow({
+          content: dangerBuildings[0].name + ' : ' + dangerBuildings[0].description
+        });
+        var infowindowdanger2 = new google.maps.InfoWindow({
+          content: dangerBuildings[1].name + ' : ' + dangerBuildings[1].description
+        });
+        dangermarker1.addListener('click', function() {
+          infowindowdanger1.open(map, dangermarker1);
+        });
+        dangermarker2.addListener('click', function() {
+          infowindowdanger2.open(map, dangermarker2);
+        });
+/////////////////////////////////
+
+// Cautioned Buildings markers
+        
+        var cautionedmarker1 = new google.maps.Marker({
+        position: new google.maps.LatLng(cautionedBuildings[0].lat, cautionedBuildings[0].long),
+        map: map,
+        title: cautionedBuildings[0].name,
+        icon: 'YellowMapIconMarker.png'
+        });
+        var cautionedmarker2 = new google.maps.Marker({
+        position: new google.maps.LatLng(cautionedBuildings[1].lat, cautionedBuildings[1].long),
+        map: map,
+        title: cautionedBuildings[1].name,
+        icon: 'YellowMapIconMarker.png'
+        });
+        var infowindowcautioned1 = new google.maps.InfoWindow({
+          content: cautionedBuildings[0].name + ' : ' + cautionedBuildings[0].description
+        });
+        var infowindowcautioned2 = new google.maps.InfoWindow({
+          content: cautionedBuildings[1].name + ' : ' + cautionedBuildings[1].description
+        });
+        cautionedmarker1.addListener('click', function() {
+          infowindowcautioned1.open(map, cautionedmarker1);
+        });
+        cautionedmarker2.addListener('click', function() {
+          infowindowcautioned2.open(map, cautionedmarker2);
+        });
+//////////////////////////////
+
+// Safe Buildings markers
+        
+        var safemarker1 = new google.maps.Marker({
+        position: new google.maps.LatLng(safeBuildings[0].lat, safeBuildings[0].long),
+        map: map,
+        title: safeBuildings[0].name,
+        icon: 'greenMapIcon.png'
+        });
+        var safemarker2 = new google.maps.Marker({
+        position: new google.maps.LatLng(safeBuildings[1].lat, safeBuildings[1].long),
+        map: map,
+        title: safeBuildings[1].name,
+        icon: 'greenMapIcon.png'
+        });
+        var infowindowsafe1 = new google.maps.InfoWindow({
+          content: safeBuildings[0].name + ' : ' + safeBuildings[0].description
+        });
+        var infowindowsafe2 = new google.maps.InfoWindow({
+          content: safeBuildings[1].name + ' : ' + safeBuildings[1].description
+        });
+        safemarker1.addListener('click', function() {
+          infowindowsafe1.open(map, safemarker1);
+        });
+        safemarker2.addListener('click', function() {
+          infowindowsafe2.open(map, safemarker2);
+        });
+//////////////////////////////
+
+    })
+    return dangerBuildings;
+}
+
+/*************************************************************************/
+
+function sendEmail(){
+    var body_message = "Threat object :  "+preName.innerHTML + "  has been identified at location " + preNearestBuilding.innerHTML + "  Latitude:  "+preLatitude.innerHTML + "  Longitude:  "+preLongitude.innerHTML + "%0D%0A%0D%0A";
+    body_message += "For evacuation plan contact officer James Clark Ph: 513-800-9999 %0D%0A";
+    body_message += "Below are the more details: %0D%0A%0D%0A";
+    body_message += "Buildings to be away from: %0D%0A";
+    body_message += dangerBuildings[0].name + ' : ' + dangerBuildings[0].description +"%0D%0A";
+    body_message += dangerBuildings[1].name + ' : ' + dangerBuildings[1].description + "%0D%0A%0D%0A";
+    body_message += "Be cautious when near to: %0D%0A";
+    body_message += cautionedBuildings[0].name + ' : ' + cautionedBuildings[0].description + "%0D%0A";
+    body_message += cautionedBuildings[1].name + ' : ' + cautionedBuildings[1].description + "%0D%0A%0D%0A";
+    body_message += "It is fine to be near: %0D%0A";
+    body_message += safeBuildings[1].name + ' : ' + safeBuildings[1].description + "%0D%0A";
+    body_message += safeBuildings[0].name + ' : ' + safeBuildings[0].description + "%0D%0A%0D%0A";
+    body_message += "LAW ENFORCEMENT DEPARTMENT%0D%0ACINCINNATI%0D%0AFOR HELP DIAL 911"
+
+
+    body_message += "It is safe to be as far as possible from dangerous buildings";
+
+    var email = 'UCSecurityAdmin@mail.uc.edu';
+    var subject = 'ALERT EMAIL';
+    var mailto_link = 'mailto:' + email + '?subject=' + subject + '&body=' + body_message;
+
+    win = window.open(mailto_link, 'emailWindow');
+}
+</script>
+
+
+</head>
+
+<body>
+	<noscript>
+		You need to enable JavaScript to run this app.
+    </noscript>
+    
+    <div class="main_left">
+            <div class="sub_main_left_top">
+                    <table class="table_left_top" >
+                        <tr>
+                            <th colspan="2" align="center" class="th_table_left_top">Live Video Feed....</th>
+                        </tr>
+                        <tr id="row_live_video_feed">
+                            <td colspan="2" align="center">
+                                <div id="div_live_video_feed" ></div>
+                            </td>
+                              
+                        </tr>
+                        <tr>
+                            <td align="center" style="width:50%;">
+                                <button id="alertBtn" onclick="prepareMap()">Dispatch LEU</button>
+                            </td>
+                            <td align="center" style="width:50%;">
+                                <button align="center" id="detailsBtn" onclick="sendEmail()">Alert All Users</button>
+                            </td> 
+                              
+                        </tr>
+                    </table>
+            </div>
+
+            <div class="sub_main_left_bottom">
+                    <table class="table_left_bottom" style="width:100%; height:100%; border:solid;">
+                            <tr align="center">
+                                <th colspan="2" align="center" ><p align="center-side" style="margin-left:4%;">Details</p></th>
+                            </tr>
+                            <tr id="" style="width:100%; height:70%; border:solid;">
+                                <td style="width:100%; height:60%; border:solid;">
+                                    <img id="my-screenshot" style="width:64%; height:24%;" align="center"></div>
+                                </td>
+                            </tr>
+                            
+                    </table>
+            </div>
+    </div>
+
+    <div class="main_right">
+            <div class="sub_main_right_top" id="map">
+
+            </div>
+                
+            <div class="sub_main_right_bottom">
+                <table style="width:80%; height: 70%">
+                    <tr>
+                        <td style="width:50%; height: 70%">
+                                <label for="">Latitude: </label> <pre id="objLatitude"></pre> 
+                        </td>
+                        <td style="width:50%; height: 70%">
+                                <label for="">Longitude: </label>  <pre id="objLongitude"></pre> 
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width:70%; height: 70%">
+                                <label for="">nearest location: </label>  <pre id="objNearestLocation"></pre> <br />
+                        </td>
+                        <td style="width:30%; height: 70%">
+                                <label for="">Threat-object: </label> <pre id="objName"></pre> <br />
+                        </td>
+                    </tr>
+                </table>
+                    
+                    
+                    
+                   
+            </div>
+    </div>
+    
+
+
+
+
+</body>
+
+</html>
